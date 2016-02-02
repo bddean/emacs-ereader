@@ -75,6 +75,16 @@
              (div . ereader-html-tag-div))))
       (shr-insert-document html))))
 
+
+(defun ereader-chapter-position (c)
+  "c is cons cell TODO doc"
+  (if (and c (car c))
+      (let ((link (assoc (car c) ereader-links)))
+        (if (cdr link)
+            (marker-position (cdr link))
+          0))
+    0)))
+
 (defun ereader-read-epub (epub-filename)
   (let ((extracted-dir (make-temp-file
                         (concat (file-name-base epub-filename) "-")
@@ -120,12 +130,7 @@
       (add-to-list 'ereader-chapters
                    (cons 
                     (cdr (assq 'href (xml-node-attributes link)))
-                    (xml+-node-text link)
-
-										)))
-
-    ;; TODO handle metadata and spine
-    ;; (assoc 'metadata (xml-node-children  content))
+                    (xml+-node-text link))))
 
     (setq manifest (assoc 'manifest (xml-node-children  content)))
     (dolist (item (xml-node-children manifest))
@@ -136,8 +141,25 @@
           (funcall interpreter extracted-dir item)
           (insert "\n"))))
 
-    ;; TODO now that we know the pages of each chapter, sort the chapter list
-    ))
+    ;; We've found out where the chapters are; now put them in order
+    (sort 
+     ereader-chapters
+     (lambda (a b) (< (ereader-chapter-position a)
+                      (ereader-chapter-position b))))))
+
+(defun ereader-current-chapter ()
+  (cdr (let ((possibilities ereader-chapters))
+         (while (and possibilities (car possibilities)
+                     (or (< (point) (ereader-chapter-position
+                                     (car possibilities)))
+                         (> (point) (ereader-chapter-position
+                                     (cl-second possibilities)))))
+           (setq possibilities (cdr possibilities)))
+         (car possibilities))))
+
+(defun ereader-message-chapter ()
+  (interactive)
+  (message (ereader-current-chapter)))
 
 (defun ereader-goto-chapter ()
   (interactive)
@@ -149,8 +171,9 @@
 
 (defvar ereader-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map "G" 'ereader-goto-chapter)
-    (define-key map "g" 'ereader-goto-chapter)
+    (define-key map "G" #'ereader-goto-chapter)
+    (define-key map "g" #'ereader-goto-chapter)
+    (define-key map "c" #'ereader-message-chapter)
     map))
 
 (defun ereader-write-file (&optional file)
