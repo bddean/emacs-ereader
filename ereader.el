@@ -1,5 +1,6 @@
 (require 'dash)
- (require 's)
+(require 's)
+(require 'xml+)
 
 (defvar ereader-media-types
   '(("image/jpeg" . ereader-display-image)
@@ -9,9 +10,8 @@
   "Insert image item described by xml node ITEM into the buffer"
   (insert-image
    (create-image (concat cwd "/" (cdr (assoc 'href (xml-node-attributes item)))))
-   (cdr (assoc 'id (xml-node-attributes item))))
-  (insert "\n")
-  )
+   (cdr (assoc 'id (xml-node-attributes item)))
+   (insert "\n")))
 
 (defface ereader-link
   '((t (:inherit link)))
@@ -19,8 +19,6 @@
   :group 'ereader)
 
 (defun ereader-html-tag-a (cont)
-  (print (assq :href cont))
-
   (let ((url (cdr (assq :href cont)))
         (start (point)))
     (shr-generic cont)
@@ -51,9 +49,8 @@
     (when id
       (add-to-list 'ereader-links
                    (cons (format "%s#%s" ereader-html-current-file (cdr id))
-                         (set-marker (make-marker) (point))))))
-  (print cont)
-  (shr-tag-div cont))
+                         (set-marker (make-marker) (point)))))
+    (shr-tag-div cont)))
 
 (defun ereader-follow-link ()
   (interactive)
@@ -67,9 +64,10 @@
   (let* ((filename (cdr (assoc 'href (xml-node-attributes item))))
          (href (concat cwd "/" filename))
          (html nil))
-    (find-file href)
-    (setq html (libxml-parse-xml-region (point-min) (point-max)))
-    (kill-buffer)
+
+    (with-current-buffer (find-file-noselect href nil 'rawfile)
+      (setq html (libxml-parse-xml-region (point-min) (point-max)))
+      (kill-buffer))
 
     (let ((ereader-html-current-file (file-name-nondirectory filename))
           (shr-external-rendering-functions
@@ -89,9 +87,10 @@
     (call-process "unzip" nil nil nil "-d" extracted-dir epub-filename)
 
     ;; content.opmf contains the struture of the epub file
-    (find-file (concat extracted-dir "/content.opf"))
-    (setq content (libxml-parse-xml-region (point-min) (point-max)))
-    (kill-buffer)
+    (with-current-buffer
+        (find-file-noselect (concat extracted-dir "/content.opf") nil 'rawfile)
+      (setq content (libxml-parse-xml-region (point-min) (point-max)))
+      (kill-buffer))
 
     ;; Parse Table of Contents
     (setq guide (assoc 'guide (xml-node-children content)))
@@ -100,29 +99,30 @@
            (s-split
             "#"
             (cdr (assq 'href
-                        (xml-node-attributes
-                         (-first (lambda (reference)
-                                   (equal (cdr (assq 'type (xml-node-attributes reference)))
-                                          "toc"))
-                                 (xml-node-children guide))))))))
+											 (xml-node-attributes
+												(-first (lambda (reference)
+																	(equal (cdr (assq 'type (xml-node-attributes reference)))
+																				 "toc"))
+																(xml-node-children guide))))))))
 
 
       (setq toc-file (car toc-href))
       (setq toc-id   (cadr toc-href))
-      (find-file (concat extracted-dir "/" toc-file))
-      (setq toc-html (libxml-parse-html-region (point-min) (point-max)))
-      (kill-buffer))
+      (with-current-buffer
+          (find-file-noselect (concat extracted-dir "/" toc-file) nil 'rawfile)
+        (setq toc-html (libxml-parse-html-region (point-min) (point-max)))
+        (kill-buffer)))
 
-    (dolist (link (xml-query-all toc-html '((body)
-                                       (div :id "toc")
-                                       ((p :class "tocfm") (p :class "toc"))
-                                       (a))))
+    (dolist (link (xml+-query-all toc-html '((body)
+																						 (div :id "toc")
+																						 ((p :class "tocfm") (p :class "toc"))
+																						 (a))))
       (add-to-list 'ereader-chapters
                    (cons 
                     (cdr (assq 'href (xml-node-attributes link)))
-                    (xml-node-text link)
+                    (xml+-node-text link)
 
-                     )))
+										)))
 
     ;; TODO handle metadata and spine
     ;; (assoc 'metadata (xml-node-children  content))
@@ -147,16 +147,47 @@
     (goto-char (marker-position (cdr link)))
     (recenter-top-bottom 4)))
 
-(define-derived-mode ereader-mode special-mode "Ereader"
-  "Major mode for reading ebooks
-\\{ereader-mode-map}"
-  (make-local-variable 'ereader-links)
-  (read-only-mode 1))
-
 (defvar ereader-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map "G" 'ereader-goto-chapter)
     (define-key map "g" 'ereader-goto-chapter)
     map))
+
+(defun ereader-write-file (&optional file)
+  (error "Saving not yet supported"))
+
+;; (define-derived-mode ereader-mode special-mode "Ereader"
+;; Should use view-mode
+(defun ereader-mode ()
+  "Major mode for reading ebooks
+\\{ereader-mode-map}"
+  (kill-all-local-variables)
+
+  (auto-save-mode 0)
+  (make-local-variable 'ereader-links)
+	(make-local-variable 'revert-buffer-function) ;; TODO
+  (make-local-variable 'require-final-newline)
+	(setq require-final-newline nil)
+	(make-local-variable 'local-enable-local-variables)
+	(setq local-enable-local-variables nil)
+
+  (setq major-mode 'ereader-mode)
+  (setq mode-name "Ereader")
+  (use-local-map ereader-mode-map)
+
+  (add-hook 'write-contents-functions 'ereader-write-file nil t)
+
+
+  (delete-region (point-min) (point-max))
+  (save-excursion
+    (ereader-read-epub (buffer-file-name)))
+
+  (setq buffer-read-only t)
+  (set-buffer-modified-p nil))
+
+(put 'ereader-mode 'mode-class 'special)
+
+(add-to-list 'auto-mode-alist '("\\.epub$" . ereader-mode))
 
 (defvar ereader-link-map
   (let ((map (make-sparse-keymap)))
@@ -166,14 +197,4 @@
     (define-key map [mouse-2] 'ereader-follow-link)
     map))
 
-;; Test snippet of code until we hook into find-file properly
-(progn
-  (when (get-buffer "epub-test")
-    (kill-buffer "epub-test"))
-  (pop-to-buffer "epub-test")
-  
-  (ereader-mode)
-  (read-only-mode -1)
-  (ereader-read-epub
-   "/home/ben/notes/MacIntyre, Alasdair/After Virtue_ A Study in Moral Theory, Third Edition/After Virtue_ A Study in Moral Theory, Third Edition - Alasdair MacIntyre.epub")
-  (read-only-mode 1))
+(provide 'ereader-mode)
