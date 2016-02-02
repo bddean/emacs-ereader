@@ -179,13 +179,9 @@
 (defun ereader-write-file (&optional file)
   (error "Saving not yet supported"))
 
-;; (define-derived-mode ereader-mode special-mode "Ereader"
-;; Should use view-mode
-(defun ereader-mode ()
+(define-derived-mode ereader-mode view-mode "Ereader"
   "Major mode for reading ebooks
 \\{ereader-mode-map}"
-  (kill-all-local-variables)
-
   (auto-save-mode 0)
   (make-local-variable 'ereader-links)
 	(make-local-variable 'revert-buffer-function) ;; TODO
@@ -194,13 +190,10 @@
 	(make-local-variable 'local-enable-local-variables)
 	(setq local-enable-local-variables nil)
 
-  (setq major-mode 'ereader-mode)
-  (setq mode-name "Ereader")
-  (use-local-map ereader-mode-map)
-
   (add-hook 'write-contents-functions 'ereader-write-file nil t)
 
 
+  (setq buffer-read-only nil)
   (delete-region (point-min) (point-max))
   (save-excursion
     (ereader-read-epub (buffer-file-name)))
