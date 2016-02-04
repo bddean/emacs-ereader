@@ -14,11 +14,11 @@
    (insert "\n")))
 
 ;; Variables for metadata
-(defvar-local ereader-meta-creator nil "creator")
-(defvar-local ereader-meta-title nil "title")
-(defvar-local ereader-meta-subject nil "subject")
-(defvar-local ereader-meta-isbn nil "isbn")
-(defvar-local ereader-meta-publisher nil "publisher")
+(defvar-local ereader-meta-creator nil "creator of book")
+(defvar-local ereader-meta-title nil "title of book")
+(defvar-local ereader-meta-subject nil "subject of book")
+(defvar-local ereader-meta-isbn nil "isbn of book")
+(defvar-local ereader-meta-publisher nil "publisher of book")
 
 (defface ereader-link
   '((t (:inherit link)))
@@ -111,10 +111,9 @@ cell C"
       (kill-buffer))
 
     ;; Save metadata
-    (setq glbl-content content)
     (setq ereader-meta-creator (xml+-node-text
-                                (xml+-query-first content '(> (package) > (metadata) >
-                                                              (creator)))))
+                                (xml+-query-first glbl-content '(> (package) > (metadata) >
+                                                                   (creator)))))
     (setq ereader-meta-title (xml+-node-text
                               (xml+-query-first content '(> (package) > (metadata) >
                                                             (title)))))
@@ -175,7 +174,7 @@ cell C"
 
 (defun ereader-current-chapter ()
   (cdr (let ((possibilities ereader-chapters))
-         (while (and possibilities (car possibilities)
+         (while (and possibilities (car possibilities) (second possibilities)
                      (or (< (point) (ereader-chapter-position
                                      (car possibilities)))
                          (> (point) (ereader-chapter-position
