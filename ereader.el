@@ -13,6 +13,13 @@
    (cdr (assoc 'id (xml-node-attributes item)))
    (insert "\n")))
 
+;; Variables for metadata
+(defvar-local ereader-meta-creator nil "creator")
+(defvar-local ereader-meta-title nil "title")
+(defvar-local ereader-meta-subject nil "subject")
+(defvar-local ereader-meta-isbn nil "isbn")
+(defvar-local ereader-meta-publisher nil "publisher")
+
 (defface ereader-link
   '((t (:inherit link)))
   "Font for link elements."
@@ -77,13 +84,14 @@
 
 
 (defun ereader-chapter-position (c)
-  "c is cons cell TODO doc"
+  "Get the character position of the chapter represented by cons
+cell C"
   (if (and c (car c))
       (let ((link (assoc (car c) ereader-links)))
         (if (cdr link)
             (marker-position (cdr link))
           0))
-    0)))
+    0))
 
 (defun ereader-read-epub (epub-filename)
   (let ((extracted-dir (make-temp-file
@@ -101,6 +109,24 @@
         (find-file-noselect (concat extracted-dir "/content.opf") nil 'rawfile)
       (setq content (libxml-parse-xml-region (point-min) (point-max)))
       (kill-buffer))
+
+    ;; Save metadata
+    (setq glbl-content content)
+    (setq ereader-meta-creator (xml+-node-text
+                                (xml+-query-first content '(> (package) > (metadata) >
+                                                              (creator)))))
+    (setq ereader-meta-title (xml+-node-text
+                              (xml+-query-first content '(> (package) > (metadata) >
+                                                            (title)))))
+    (setq ereader-meta-subject (xml+-node-text
+                                (xml+-query-first content '(> (package) > (metadata) >
+                                                              (subject)))))
+    (setq ereader-meta-isbn (xml+-node-text
+                             (xml+-query-first content
+                                               '(> (package) > (metadata) >
+                                                   (identifier :scheme "ISBN")))))
+    (setq ereader-meta-publisher (xml+-node-text
+                                  (xml+-query-first content '((metadata) > (publisher)))))
 
     ;; Parse Table of Contents
     (setq guide (assoc 'guide (xml-node-children content)))
@@ -174,6 +200,7 @@
     (define-key map "G" #'ereader-goto-chapter)
     (define-key map "g" #'ereader-goto-chapter)
     (define-key map "c" #'ereader-message-chapter)
+    (define-key map "l" #'org-store-link)
     map))
 
 (defun ereader-write-file (&optional file)
