@@ -77,6 +77,9 @@
       (setq html (libxml-parse-xml-region (point-min) (point-max)))
       (kill-buffer))
 
+    (add-to-list 'ereader-links
+                 (cons (file-name-nondirectory filename)
+                       (set-marker (make-marker) (point))))
     (let ((ereader-html-current-file (file-name-nondirectory filename))
           (shr-external-rendering-functions '((a . ereader-html-tag-a))))
       (shr-insert-document html))))
@@ -147,8 +150,7 @@ cell C"
         (kill-buffer)))
 
     (dolist (link (xml+-query-all toc-html '((body)
-																						 (div :id "toc")
-																						 ((p :class "tocfm") (p :class "toc"))
+                                             ;; TODO get a structured outline
 																						 (a))))
       (add-to-list 'ereader-chapters
                    (cons 
