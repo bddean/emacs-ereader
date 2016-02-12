@@ -51,13 +51,14 @@
 (defvar-local ereader-chapters nil
   "Store chapters for an ereader buffer in the form (linkname, chapter)")
 
-(defun ereader-html-tag-div (cont)
-  (let ((id (assq :id cont)))
-    (when id
-      (add-to-list 'ereader-links
-                   (cons (format "%s#%s" ereader-html-current-file (cdr id))
-                         (set-marker (make-marker) (point)))))
-    (shr-tag-div cont)))
+(defadvice shr-descend (before ereader-anchor-storage activate)
+  "Store link targets for ereader-mode"
+  (when (equal major-mode 'ereader-mode)
+    (let ((id (assq :id (cdr dom))))
+      (when id
+        (add-to-list 'ereader-links
+                     (cons (format "%s#%s" ereader-html-current-file (cdr id))
+                           (set-marker (make-marker) (point))))))))
 
 (defun ereader-follow-link ()
   (interactive)
@@ -77,11 +78,8 @@
       (kill-buffer))
 
     (let ((ereader-html-current-file (file-name-nondirectory filename))
-          (shr-external-rendering-functions
-           '((a . ereader-html-tag-a)
-             (div . ereader-html-tag-div))))
+          (shr-external-rendering-functions '((a . ereader-html-tag-a))))
       (shr-insert-document html))))
-
 
 (defun ereader-chapter-position (c)
   "Get the character position of the chapter represented by cons
@@ -112,8 +110,8 @@ cell C"
 
     ;; Save metadata
     (setq ereader-meta-creator (xml+-node-text
-                                (xml+-query-first glbl-content '(> (package) > (metadata) >
-                                                                   (creator)))))
+                                (xml+-query-first content '(> (package) > (metadata) >
+                                                              (creator)))))
     (setq ereader-meta-title (xml+-node-text
                               (xml+-query-first content '(> (package) > (metadata) >
                                                             (title)))))
