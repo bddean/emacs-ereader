@@ -1,6 +1,7 @@
 (require 'dash)
 (require 's)
 (require 'xml+)
+(require 'picture)
 
 (defvar ereader-media-types
   '(("image/jpeg" . ereader-display-image)
@@ -12,6 +13,114 @@
    (create-image (concat cwd "/" (cdr (assoc 'href (xml-node-attributes item)))))
    (cdr (assoc 'id (xml-node-attributes item)))
    (insert "\n")))
+
+(defvar ereader-annotation-files
+  '(("After Virtue: A Study in Moral Theory, Third Edition" .
+     ("/home/ben/notes/ethics/ethics.org"))))
+
+(defvar-local ereader-annotations '() "List of positions of annotations")
+
+;; TODO requires org-ebook
+(defun ereader-load-annotations ()
+  (interactive)
+  (read-only-mode -1)
+  (setq ereader-annotations '())
+  (let ((ebook-file (buffer-file-name))
+        link path path-parts path-quote begin end annotation)
+    (dolist (notes (cdr (assoc ereader-meta-title ereader-annotation-files)))
+      (with-current-buffer (find-file-noselect notes)
+        (save-excursion
+          (beginning-of-buffer)
+          (let ((org-link-search-failed nil))
+            ;; TODO use re-search instead
+            (flet ((message (&rest args) nil)) (org-next-link))
+            (while (not org-link-search-failed)
+              (print (point))
+              (setq link (org-element-link-parser))
+              (setq path (org-link-unescape (org-element-property :path link)))
+              (when (s-prefix-p "ebook:" (org-element-property :raw-link link))
+                (setq path-parts (org-ebook-parse-path path))
+
+                ;; Get text for margin note
+                (setq annotation
+                      (cond ((org-in-item-p)
+                             (buffer-substring (org-element-property :end link)
+                                               (save-excursion (org-end-of-item) (point))))
+                            (t "Note")))
+                (setq annotation (replace-regexp-in-string "^\n+" "" annotation))
+                (setq annotation (propertize annotation
+                                             'face 'font-lock-comment-face
+                                             'file (buffer-file-name)
+                                             'position (point)
+                                             'help-echo (format "%s, line %d"
+                                                                (file-name-nondirectory
+                                                                 (buffer-file-name))
+                                                                (org-current-line))))
+                
+                
+                (when (equal ebook-file
+                             (expand-file-name (plist-get path-parts :filename)))
+                  (save-window-excursion
+                    (org-ebook-open path)
+                    (add-to-list 'ereader-annotations (set-marker (make-marker) (point)))
+                    (if (and (setq path-quote (plist-get path-parts :quote))
+                             (looking-at (regexp-quote path-quote)))
+                        (setq begin (point) end (match-end 0))
+                      (setq begin (line-beginning-position)
+                            end (line-end-position)))
+                    
+                    (add-text-properties begin end (list 'face 'underline
+                                                         'ereader-annotation annotation))))) 
+              (flet ((message (&rest args) nil)) (org-next-link)))))))
+    ;; (setq ereader-annotations annotation-positions)
+    )
+  (read-only-mode 1))
+
+;; TODO with-silent-modifications
+(defun ereader-hide-annotation ()
+  (interactive)
+  (read-only-mode -1)
+  (let ((annotation (get-text-property (point) 'ereader-annotation)))
+    (unless annotation (error "No annotation here"))
+    (save-excursion
+      (dotimes (_ (length (s-lines annotation)))
+        (move-beginning-of-line nil)
+        (picture-forward-column shr-width)
+        (delete-region (point) (line-end-position))
+        (forward-line)))
+    (read-only-mode 1)))
+
+(defun ereader-show-annotation ()
+  (interactive)
+  (ereader-hide-annotation)
+  (read-only-mode -1)
+  (save-excursion
+    (let ((annotation (get-text-property (point) 'ereader-annotation))
+          lines)
+      (unless annotation (error "No annotation here"))
+      (setq lines (s-lines annotation))
+      (dolist (l lines)
+        (move-beginning-of-line nil)
+        (picture-forward-column shr-width)
+        (delete-region (point) (line-end-position))
+        (picture-forward-column 5)
+        (insert l)
+        (forward-line))))
+  (read-only-mode 1))
+
+(defun ereader-hide-all-annotations ()
+  (interactive)
+  (dolist (p ereader-annotations)
+    (goto-char p)
+    (ereader-hide-annotation)))
+
+(defun ereader-show-all-annotations ()
+  (interactive)
+  (dolist (m ereader-annotations)
+    (goto-char (marker-position m))
+    (ereader-show-annotation)
+    )
+  )
 
 ;; Variables for metadata
 (defvar-local ereader-meta-creator nil "creator of book")
@@ -199,7 +308,13 @@ cell C"
     (define-key map "G" #'ereader-goto-chapter)
     (define-key map "g" #'ereader-goto-chapter)
     (define-key map "c" #'ereader-message-chapter)
+    (define-key map "r" #'ereader-load-annotations)
     (define-key map "l" #'org-store-link)
+    (define-key map "a" #'ereader-show-annotation)
+    (define-key map "A" #'ereader-hide-annotation)
+
+    (define-key map "m" #'ereader-show-all-annotations)
+    (define-key map "M" #'ereader-hide-all-annotations)
     map))
 
 (defun ereader-write-file (&optional file)
@@ -209,6 +324,7 @@ cell C"
   "Major mode for reading ebooks
 \\{ereader-mode-map}"
   (auto-save-mode 0)
+  (setq truncate-lines 1)
   (make-local-variable 'ereader-links)
 	(make-local-variable 'revert-buffer-function) ;; TODO
   (make-local-variable 'require-final-newline)
