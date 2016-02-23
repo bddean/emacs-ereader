@@ -204,19 +204,24 @@ cell C"
     0))
 
 (defun ereader-read-epub (epub-filename)
-  (let ((extracted-dir (make-temp-file
-                        (concat (file-name-base epub-filename) "-")
-                        'directory))
-        (content nil)
-        (manifest nil)
-        (guide nil)
-        (toc-id nil)
-        (toc-html nil))
+  (let ((extracted-dir (concat (make-temp-file
+                                (concat (file-name-base epub-filename) "-")
+                                'directory) "/"))
+        content manifest toc-id toc-html root-dir)
     (call-process "unzip" nil nil nil "-d" extracted-dir epub-filename)
 
-    ;; content.opmf contains the struture of the epub file
     (with-current-buffer
-        (find-file-noselect (concat extracted-dir "/content.opf") nil 'rawfile)
+        (find-file-noselect (concat extracted-dir "/META-INF/container.xml") nil 'rawfile)
+      (setq opmf-file
+            (concat extracted-dir
+                    (cdr
+                     (assq 'full-path
+                           (xml-node-attributes
+                            (xml+-query-first (libxml-parse-xml-region (point-min) (point-max))
+                                              '((container) > (rootfiles) > (rootfile)))))))
+            root-dir (file-name-directory opmf-file)))
+
+    (with-current-buffer (find-file-noselect opmf-file nil 'rawfile)
       (setq content (libxml-parse-xml-region (point-min) (point-max)))
       (kill-buffer))
 
@@ -238,23 +243,19 @@ cell C"
                                   (xml+-query-first content '((metadata) > (publisher)))))
 
     ;; Parse Table of Contents
-    (setq guide (assoc 'guide (xml-node-children content)))
     (let ((toc-file nil)
           (toc-href
-           (s-split
-            "#"
-            (cdr (assq 'href
-											 (xml-node-attributes
-												(-first (lambda (reference)
-																	(equal (cdr (assq 'type (xml-node-attributes reference)))
-																				 "toc"))
-																(xml-node-children guide))))))))
+           (s-split "#"
+                    (cdr
+                     (assq 'href
+                           (xml-node-attributes
+                            (xml+-query-first content '((guide) (reference :type "toc")))))))))
 
 
       (setq toc-file (car toc-href))
       (setq toc-id   (cadr toc-href))
       (with-current-buffer
-          (find-file-noselect (concat extracted-dir "/" toc-file) nil 'rawfile)
+          (find-file-noselect (concat root-dir "/" toc-file) nil 'rawfile)
         (setq toc-html (libxml-parse-html-region (point-min) (point-max)))
         (kill-buffer)))
 
@@ -272,7 +273,7 @@ cell C"
                                (cdr (assoc 'media-type (xml-node-attributes item)))
                                ereader-media-types))))
         (when interpreter
-          (funcall interpreter extracted-dir item)
+          (funcall interpreter root-dir item)
           (insert "\n"))))
 
     ;; We've found out where the chapters are; now put them in order
