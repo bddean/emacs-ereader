@@ -1,3 +1,6 @@
+;; TODO use temp buffer instead of `find-file-noselect'
+;; http://emacs.stackexchange.com/questions/2868/whats-wrong-with-find-file-noselect
+
 (require 'dash)
 (require 's)
 (require 'xml+)
@@ -14,9 +17,9 @@
    (cdr (assoc 'id (xml-node-attributes item)))
    (insert "\n")))
 
-(defvar ereader-annotation-files
-  '(("After Virtue: A Study in Moral Theory, Third Edition" .
-     ("/home/ben/notes/ethics/ethics.org"))))
+(defcustom ereader-annotation-files nil
+  "Alist mapping ebook titles to org notes containing
+  annotations" )
 
 (defvar-local ereader-annotations '() "List of positions of annotations")
 
@@ -243,13 +246,15 @@ cell C"
                                   (xml+-query-first content '((metadata) > (publisher)))))
 
     ;; Parse Table of Contents
-    (let ((toc-file nil)
-          (toc-href
-           (s-split "#"
-                    (cdr
-                     (assq 'href
-                           (xml-node-attributes
-                            (xml+-query-first content '((guide) (reference :type "toc")))))))))
+    (let (toc-file toc-el toc-href)
+      (setq toc-el (xml+-query-first content '((guide) (reference :type "toc"))))
+      (when toc-el
+        (setq toc-href
+              (s-split "#"
+                       (cdr
+                        (assq 'href
+                              (xml-node-attributes
+                               toc-el))))))
 
 
       (setq toc-file (car toc-href))
@@ -284,13 +289,14 @@ cell C"
 
 (defun ereader-current-chapter ()
   (cdr (let ((possibilities ereader-chapters))
-         (while (and possibilities (car possibilities) (second possibilities)
-                     (or (< (point) (ereader-chapter-position
-                                     (car possibilities)))
-                         (> (point) (ereader-chapter-position
-                                     (cl-second possibilities)))))
-           (setq possibilities (cdr possibilities)))
-         (car possibilities))))
+         (when possibilities
+           (while (and possibilities (car possibilities) (second possibilities)
+                       (or (< (point) (ereader-chapter-position
+                                       (car possibilities)))
+                           (> (point) (ereader-chapter-position
+                                       (cl-second possibilities)))))
+             (setq possibilities (cdr possibilities)))
+           (car possibilities)))))
 
 (defun ereader-message-chapter ()
   (interactive)

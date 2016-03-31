@@ -44,7 +44,9 @@ Example: [[ebook.epub::@Ch 1::$It was a dark and stormy night]]"
            (ereader-chapter-position
             (cl-rassoc chapter ereader-chapters
                        :test (lambda (key item) (s-contains? key item)))))
-          (narrow-to-page))
+					;; TODO narrow to chapter
+          ;; (narrow-to-page)
+					)
         (when (setq quote (plist-get components :quote))
           (search-forward-lax-whitespace quote nil t)
           (goto-char (match-beginning 0))))))) 
@@ -78,10 +80,13 @@ Example: [[ebook.epub::@Ch 1::$It was a dark and stormy night]]"
       (org-store-link-props
        :type "ebook"
        :link link
-       :description (format "`%s...' (%s, %s)"
-                            quote
-                            (car (last (s-split "[ \t\n]" ereader-meta-creator)))
-                            (car (s-split-words chapter)))))))
+       :description
+       (if chapter
+           (format "`%s...' (%s, %s)"
+                   quote
+                   (car (last (s-split "[ \t\n]" ereader-meta-creator)))
+                   (car (s-split-words chapter)))
+         (format "%s... (%s)" quote (car (last (s-split "[ \t\n]" ereader-meta-creator)))))))))
 
 
 
