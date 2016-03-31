@@ -1,5 +1,19 @@
+;;; org-ebook.el --- Org-link type for ereader.el
+
+;; Author: Ben Dean <bendean837@gmail.com>
+;; Version: 0.0.0
+;; Package-Requires: ((org "8.3.3") (s "1.10.0"))
+;; Keywords: epub, ebook, org, org-link
+;; URL: https://github.com/bddean/ereader-el
+
+;;; Commentary:
+;; Create links to ebooks, including specific phrases, to open in
+;; ereader-mode. In the future other backends should be supported.
+;;; Code:
+
 (require 'org)
 (require 's)
+(require 'ereader-mode)
 
 (org-add-link-type "ebook" #'org-ebook-open)
 (add-hook 'org-store-link-functions #'org-ebook-store-link)
@@ -88,14 +102,4 @@ Example: [[ebook.epub::@Ch 1::$It was a dark and stormy night]]"
                    (car (s-split-words chapter)))
          (format "%s... (%s)" quote (car (last (s-split "[ \t\n]" ereader-meta-creator)))))))))
 
-
-
-
-
-
-
-
-
-
-
-
+(provide 'org-ebook)

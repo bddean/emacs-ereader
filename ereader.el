@@ -1,5 +1,15 @@
-;; TODO use temp buffer instead of `find-file-noselect'
-;; http://emacs.stackexchange.com/questions/2868/whats-wrong-with-find-file-noselect
+;;; ereader.el --- Major mode for reading ebooks
+
+;; Author: Ben Dean <bendean837@gmail.com>
+;; Version: 0.0.0
+;; Package-Requires: ((dash "2.12.1") (s "1.10.0") (xml+ "0.0.0") (picture))
+;; Keywords: epub, ebook
+;; URL: https://github.com/bddean/ereader-el
+
+;;; Commentary:
+;; Only .epub files are supported so far
+
+;;; Code:
 
 (require 'dash)
 (require 's)
@@ -19,18 +29,22 @@
 
 (defcustom ereader-annotation-files nil
   "Alist mapping ebook titles to org notes containing
-  annotations" )
+  annotations")
 
 (defvar-local ereader-annotations '() "List of positions of annotations")
 
 ;; TODO requires org-ebook
 (defun ereader-load-annotations ()
+  (require 'org-ebook)
   (interactive)
   (read-only-mode -1)
   (setq ereader-annotations '())
   (let ((ebook-file (buffer-file-name))
         link path path-parts path-quote begin end annotation)
     (dolist (notes (cdr (assoc ereader-meta-title ereader-annotation-files)))
+      ;; TODO use temp buffer instead of `find-file-noselect' here and in
+      ;; similar cases.
+      ;; http://emacs.stackexchange.com/questions/2868/whats-wrong-with-find-file-noselect
       (with-current-buffer (find-file-noselect notes)
         (save-excursion
           (beginning-of-buffer)
