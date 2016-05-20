@@ -33,7 +33,6 @@
 
 (defvar-local ereader-annotations '() "List of positions of annotations")
 
-;; TODO requires org-ebook
 (defun ereader-load-annotations ()
   (require 'org-ebook)
   (interactive)
@@ -88,9 +87,7 @@
                     
                     (add-text-properties begin end (list 'face 'underline
                                                          'ereader-annotation annotation))))) 
-              (flet ((message (&rest args) nil)) (org-next-link)))))))
-    ;; (setq ereader-annotations annotation-positions)
-    )
+              (flet ((message (&rest args) nil)) (org-next-link))))))))
   (read-only-mode 1))
 
 ;; TODO with-silent-modifications
@@ -220,6 +217,7 @@ cell C"
           0))
     0))
 
+;; TODO position image
 (defun ereader-read-epub (epub-filename)
   (let ((extracted-dir (concat (make-temp-file
                                 (concat (file-name-base epub-filename) "-")
@@ -312,6 +310,7 @@ cell C"
              (setq possibilities (cdr possibilities)))
            (car possibilities)))))
 
+;; TODO Sometimes buries buffer
 (defun ereader-message-chapter ()
   (interactive)
   (message (ereader-current-chapter)))
@@ -331,9 +330,10 @@ cell C"
     (define-key map "c" #'ereader-message-chapter)
     (define-key map "r" #'ereader-load-annotations)
     (define-key map "l" #'org-store-link)
+    (define-key map (kbd "S-SPC") #'scroll-down-command)
+    (define-key map " " #'scroll-up-command)
     (define-key map "a" #'ereader-show-annotation)
     (define-key map "A" #'ereader-hide-annotation)
-
     (define-key map "m" #'ereader-show-all-annotations)
     (define-key map "M" #'ereader-hide-all-annotations)
     map))
