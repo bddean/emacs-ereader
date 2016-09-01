@@ -13,7 +13,7 @@
 
 (require 'org)
 (require 's)
-(require 'ereader-mode)
+(require 'ereader)
 
 (org-add-link-type "ebook" #'org-ebook-open)
 (add-hook 'org-store-link-functions #'org-ebook-store-link)

@@ -27,6 +27,15 @@
    (cdr (assoc 'id (xml-node-attributes item)))
    (insert "\n")))
 
+
+;; Variables for metadata
+(defvar-local ereader-meta-creator nil "creator of book")
+(defvar-local ereader-meta-title nil "title of book")
+(defvar-local ereader-meta-subject nil "subject of book")
+(defvar-local ereader-meta-isbn nil "isbn of book")
+(defvar-local ereader-meta-publisher nil "publisher of book")
+
+
 (defcustom ereader-annotation-files nil
   "Alist mapping ebook titles to org notes containing
   annotations")
@@ -135,13 +144,6 @@
     (ereader-show-annotation)
     )
   )
-
-;; Variables for metadata
-(defvar-local ereader-meta-creator nil "creator of book")
-(defvar-local ereader-meta-title nil "title of book")
-(defvar-local ereader-meta-subject nil "subject of book")
-(defvar-local ereader-meta-isbn nil "isbn of book")
-(defvar-local ereader-meta-publisher nil "publisher of book")
 
 (defface ereader-link
   '((t (:inherit link)))
@@ -376,4 +378,4 @@ cell C"
     (define-key map [mouse-2] 'ereader-follow-link)
     map))
 
-(provide 'ereader-mode)
+(provide 'ereader)
