@@ -37,14 +37,16 @@
 
 
 (defcustom ereader-annotation-files nil
-  "Alist mapping ebook titles to org notes containing
-  annotations")
+  "Alist mapping ebook titles (values of the variable
+  `ereader-meta-title' in ebook buffers) to org notes containing
+  annotations."
+	:group 'ereader)
 
 (defvar-local ereader-annotations '() "List of positions of annotations")
 
 (defun ereader-load-annotations ()
-  (require 'org-ebook)
   (interactive)
+  (require 'org-ebook)
   (read-only-mode -1)
   (setq ereader-annotations '())
   (let ((ebook-file (buffer-file-name))
@@ -55,12 +57,11 @@
       ;; http://emacs.stackexchange.com/questions/2868/whats-wrong-with-find-file-noselect
       (with-current-buffer (find-file-noselect notes)
         (save-excursion
-          (beginning-of-buffer)
+          (goto-char (point-min))
           (let ((org-link-search-failed nil))
             ;; TODO use re-search instead
-            (flet ((message (&rest args) nil)) (org-next-link))
+            (cl-flet ((message (&rest args) nil)) (org-next-link))
             (while (not org-link-search-failed)
-              (print (point))
               (setq link (org-element-link-parser))
               (setq path (org-link-unescape (org-element-property :path link)))
               (when (s-prefix-p "ebook:" (org-element-property :raw-link link))
@@ -96,7 +97,7 @@
                     
                     (add-text-properties begin end (list 'face 'underline
                                                          'ereader-annotation annotation))))) 
-              (flet ((message (&rest args) nil)) (org-next-link))))))))
+              (cl-flet ((message (&rest args) nil)) (org-next-link))))))))
   (read-only-mode 1))
 
 ;; TODO with-silent-modifications
@@ -224,7 +225,7 @@ cell C"
   (let ((extracted-dir (concat (make-temp-file
                                 (concat (file-name-base epub-filename) "-")
                                 'directory) "/"))
-        content manifest toc-id toc-html root-dir)
+        opmf-file content manifest toc-id toc-html root-dir)
     (call-process "unzip" nil nil nil "-d" extracted-dir epub-filename)
 
     (with-current-buffer
@@ -327,10 +328,11 @@ cell C"
 
 (defvar ereader-mode-map
   (let ((map (make-sparse-keymap)))
+		(set-keymap-parent map view-mode-map)
     (define-key map "G" #'ereader-goto-chapter)
     (define-key map "g" #'ereader-goto-chapter)
     (define-key map "c" #'ereader-message-chapter)
-    (define-key map "r" #'ereader-load-annotations)
+    (define-key map (kbd "C-c r") #'ereader-load-annotations)
     (define-key map "l" #'org-store-link)
     (define-key map (kbd "S-SPC") #'scroll-down-command)
     (define-key map " " #'scroll-up-command)
@@ -379,3 +381,5 @@ cell C"
     map))
 
 (provide 'ereader)
+
+;;; ereader.el ends here

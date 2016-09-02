@@ -50,7 +50,7 @@ Example: [[ebook.epub::@Ch 1::$It was a dark and stormy night]]"
     (let* ((components (org-ebook-parse-path path))
            chapter quote)
       (find-file-other-window (plist-get components :filename))
-      (beginning-of-buffer)
+      (goto-char (point-min))
       (save-restriction
         (when (setq chapter (plist-get components :chapter))
           (widen )
@@ -85,15 +85,16 @@ Example: [[ebook.epub::@Ch 1::$It was a dark and stormy night]]"
              (s-collapse-whitespace
               (save-excursion
                 (forward-word org-ebook-quote-size)
-                (buffer-substring-no-properties orig-pos (point)))))))
-      (setq link
-            (concat "ebook:" (buffer-file-name)
-                    (when chapter
-                      (concat "::@" (s-left org-ebook-chapter-size chapter)))
-                    "::$" quote))
+                (buffer-substring-no-properties orig-pos (point))))))
+					 (link
+						(concat "ebook:" (buffer-file-name)
+										(when chapter
+											(concat "::@" (s-left org-ebook-chapter-size chapter)))
+										"::$" quote)))
+
       (org-store-link-props
        :type "ebook"
-       :link link
+       :link 'link
        :description
        (if chapter
            (format "`%s...' (%s, %s)"
@@ -103,3 +104,5 @@ Example: [[ebook.epub::@Ch 1::$It was a dark and stormy night]]"
          (format "%s... (%s)" quote (car (last (s-split "[ \t\n]" ereader-meta-creator)))))))))
 
 (provide 'org-ebook)
+
+;;; org-ebook.el ends here
