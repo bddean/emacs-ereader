@@ -15,6 +15,7 @@
 (require 'dash)
 (require 'picture)
 (require 's)
+(require 'shr)
 (require 'view)
 (require 'xml+)
 
@@ -23,7 +24,7 @@
     ("application/xhtml+xml" . ereader-display-html)))
 
 (defun ereader-display-image (cwd item)
-  "Insert image item described by xml node ITEM into the buffer"
+  "Insert image relative to directory CWD and described by xml node ITEM into the buffer."
   (insert-image
    (create-image (concat cwd "/" (cdr (assoc 'href (xml-node-attributes item)))))
    (cdr (assoc 'id (xml-node-attributes item)))
@@ -39,14 +40,26 @@
 
 
 (defcustom ereader-annotation-files nil
-  "Alist mapping ebook titles (values of the variable
-  `ereader-meta-title' in ebook buffers) to org notes containing
-  annotations."
+  "Notes files for ebooks.
+Alist mapping ebook titles (values of the variable
+`ereader-meta-title' in ebook buffers) to Org notes containing
+annotations."
 	:group 'ereader)
 
 (defvar-local ereader-annotations '() "List of positions of annotations")
 
 (defun ereader-load-annotations ()
+	"Load annotations from the associated Orgmode file.
+An annotation is simply an org-link to a position in the ebook,
+followed by some text.  The text following the annotation can be
+displayed in the right margin.
+
+This function is called interactively instead of automatically
+because it is slow.
+
+See `ereader-annotation-files', `ereader-hide-annotation',
+`ereader-show-annotation', `ereader-hide-all-annotations', and
+`ereader-show-all-annotations'."
   (interactive)
   (require 'org-ebook)
   (read-only-mode -1)
@@ -98,12 +111,13 @@
                             end (line-end-position)))
                     
                     (add-text-properties begin end (list 'face 'underline
-                                                         'ereader-annotation annotation))))) 
+                                                         'ereader-annotation annotation)))))
               (cl-flet ((message (&rest args) nil)) (org-next-link))))))))
   (read-only-mode 1))
 
 ;; TODO with-silent-modifications
 (defun ereader-hide-annotation ()
+	"Hide annotation at point."
   (interactive)
   (read-only-mode -1)
   (let ((annotation (get-text-property (point) 'ereader-annotation)))
@@ -117,6 +131,7 @@
     (read-only-mode 1)))
 
 (defun ereader-show-annotation ()
+	"Show annotation at point."
   (interactive)
   (ereader-hide-annotation)
   (read-only-mode -1)
@@ -135,23 +150,32 @@
   (read-only-mode 1))
 
 (defun ereader-hide-all-annotations ()
+	"Hide all annotations in the document."
   (interactive)
   (dolist (p ereader-annotations)
     (goto-char p)
     (ereader-hide-annotation)))
 
 (defun ereader-show-all-annotations ()
+	"Show all annotations in the document."
   (interactive)
   (dolist (m ereader-annotations)
     (goto-char (marker-position m))
-    (ereader-show-annotation)
-    )
-  )
+    (ereader-show-annotation)))
 
 (defface ereader-link
   '((t (:inherit link)))
   "Font for link elements."
   :group 'ereader)
+
+(defvar ereader-link-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [follow-link] 'mouse-face)
+    (define-key map "\r" 'ereader-follow-link)
+    (define-key map "v" 'ereader-follow-link)
+    (define-key map [mouse-2] 'ereader-follow-link)
+    map))
+
 
 (defun ereader-html-tag-a (cont)
   (let ((url (cdr (assq :href cont)))
@@ -180,7 +204,7 @@
   "Store chapters for an ereader buffer in the form (linkname, chapter)")
 
 (defadvice shr-descend (before ereader-anchor-storage activate)
-  "Store link targets for ereader-mode"
+  "Store link targets for `ereader-mode'."
   (when (equal major-mode 'ereader-mode)
     (let ((id (assq :id (cdr dom))))
       (when id
@@ -189,6 +213,7 @@
                            (set-marker (make-marker) (point))))))))
 
 (defun ereader-follow-link ()
+	"Follow an link, for example from the Table of Contents."
   (interactive)
   (push-mark)
   (let ((target (get-text-property (point) 'ereader-target)))
@@ -213,8 +238,6 @@
       (shr-insert-document html))))
 
 (defun ereader-chapter-position (c)
-  "Get the character position of the chapter represented by cons
-cell C"
   (if (and c (car c))
       (let ((link (assoc (car c) ereader-links)))
         (if (cdr link)
@@ -285,7 +308,7 @@ cell C"
                                              ;; TODO get a structured outline
 																						 (a))))
       (add-to-list 'ereader-chapters
-                   (cons 
+                   (cons
                     (cdr (assq 'href (xml-node-attributes link)))
                     (xml+-node-text link))))
 
@@ -299,7 +322,7 @@ cell C"
           (insert "\n"))))
 
     ;; We've found out where the chapters are; now put them in order
-    (sort 
+    (sort
      ereader-chapters
      (lambda (a b) (< (ereader-chapter-position a)
                       (ereader-chapter-position b))))))
@@ -317,10 +340,12 @@ cell C"
 
 ;; TODO Sometimes buries buffer
 (defun ereader-message-chapter ()
+	"Display the name of the current chapter."
   (interactive)
   (message (ereader-current-chapter)))
 
 (defun ereader-goto-chapter ()
+	"Prompt for a chapter from the TOC, and go there."
   (interactive)
   (let* ((chapter-name (completing-read "Open chapter: " (-map 'cdr ereader-chapters)))
          (chapter (rassoc chapter-name ereader-chapters))
@@ -373,13 +398,15 @@ cell C"
 
 (add-to-list 'auto-mode-alist '("\\.epub$" . ereader-mode))
 
-(defvar ereader-link-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map [follow-link] 'mouse-face)
-    (define-key map "\r" 'ereader-follow-link)
-    (define-key map "v" 'ereader-follow-link)
-    (define-key map [mouse-2] 'ereader-follow-link)
-    map))
+;;; Function declarations, mostly the fault of `ereader-load-annotations'
+(declare-function 'org-link-unescape "org")
+(declare-function 'org-element-link-parser "org-element")
+(declare-function 'org-element-property "org-element")
+(declare-function 'org-end-of-item "org-list")
+(declare-function 'org-in-item-p "org-list")
+(declare-function 'org-current-line "org-macs")
+(declare-function 'org-ebook-open "org-ebook")
+(declare-function 'org-ebook-parse-path "org-ebook")
 
 (provide 'ereader)
 
