@@ -2,7 +2,7 @@
 
 ;; Author: Ben Dean <bendean837@gmail.com>
 ;; Version: 0.0.0
-;; Package-Requires: ((emacs "24.4") (dash "2.12.1") (s "1.10.0") (xml+ "0.0.0") (picture))
+;; Package-Requires: ((emacs "24.4") (dash "2.12.1") (s "1.10.0") (xml+ "0.0.0"))
 ;; Keywords: epub, ebook
 ;; URL: https://github.com/bddean/ereader-el
 
@@ -358,7 +358,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
     (define-key map "G" #'ereader-goto-chapter)
     (define-key map "g" #'ereader-goto-chapter)
     (define-key map "c" #'ereader-message-chapter)
-    (define-key map (kbd "C-c r") #'ereader-load-annotations)
+    (define-key map "R" #'ereader-load-annotations)
     (define-key map "l" #'org-store-link)
     (define-key map (kbd "S-SPC") #'scroll-down-command)
     (define-key map " " #'scroll-up-command)
@@ -393,8 +393,6 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 
   (setq buffer-read-only t)
   (set-buffer-modified-p nil))
-
-(put 'ereader-mode 'mode-class 'special)
 
 (add-to-list 'auto-mode-alist '("\\.epub$" . ereader-mode))
 
