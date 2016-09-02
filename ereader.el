@@ -2,7 +2,7 @@
 
 ;; Author: Ben Dean <bendean837@gmail.com>
 ;; Version: 0.0.0
-;; Package-Requires: ((dash "2.12.1") (s "1.10.0") (xml+ "0.0.0") (picture))
+;; Package-Requires: ((emacs "24.4") (dash "2.12.1") (s "1.10.0") (xml+ "0.0.0") (picture))
 ;; Keywords: epub, ebook
 ;; URL: https://github.com/bddean/ereader-el
 
@@ -11,10 +11,12 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'dash)
-(require 's)
-(require 'xml+)
 (require 'picture)
+(require 's)
+(require 'view)
+(require 'xml+)
 
 (defvar ereader-media-types
   '(("image/jpeg" . ereader-display-image)
@@ -328,7 +330,6 @@ cell C"
 
 (defvar ereader-mode-map
   (let ((map (make-sparse-keymap)))
-		(set-keymap-parent map view-mode-map)
     (define-key map "G" #'ereader-goto-chapter)
     (define-key map "g" #'ereader-goto-chapter)
     (define-key map "c" #'ereader-message-chapter)
