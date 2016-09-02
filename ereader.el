@@ -398,16 +398,6 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 
 (add-to-list 'auto-mode-alist '("\\.epub$" . ereader-mode))
 
-;;; Function declarations, mostly the fault of `ereader-load-annotations'
-(declare-function 'org-link-unescape "org")
-(declare-function 'org-element-link-parser "org-element")
-(declare-function 'org-element-property "org-element")
-(declare-function 'org-end-of-item "org-list")
-(declare-function 'org-in-item-p "org-list")
-(declare-function 'org-current-line "org-macs")
-(declare-function 'org-ebook-open "org-ebook")
-(declare-function 'org-ebook-parse-path "org-ebook")
-
 (provide 'ereader)
 
 ;;; ereader.el ends here
