@@ -4,7 +4,7 @@
 ;; Version: 0.0.0
 ;; Package-Requires: ((emacs "24.4") (dash "2.12.1") (s "1.10.0") (xml+ "0.0.0"))
 ;; Keywords: epub, ebook
-;; URL: https://github.com/bddean/ereader-el
+;; URL: https://github.com/bddean/emacs-ereader
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
