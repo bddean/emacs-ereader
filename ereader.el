@@ -1,4 +1,4 @@
-;;; ereader.el --- Major mode for reading ebooks
+;;; ereader.el --- Major mode for reading ebooks with org-mode integration
 
 ;; Author: Ben Dean <bendean837@gmail.com>
 ;; Version: 0.0.0
@@ -204,6 +204,17 @@ See `ereader-annotation-files', `ereader-hide-annotation',
                                'face 'ereader-link
                                ))))
 
+(defun ereader--current-source-file nil
+	"Location of html file currently being parsed, used for
+	relative links")
+
+;; TODO Support SVGs that contain relative links
+(defun ereader-html-tag-img (cont)
+	(let ((url (cdr (assq :src cont)))
+				(basedir (file-name-directory ereader--current-source-file)))
+		(insert-image
+		 (create-image (expand-file-name url basedir)))))
+
 (defvar-local ereader-links '()
   "Alist of link names to marker destinations")
 
@@ -240,6 +251,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
          (html nil))
 
     (with-current-buffer (find-file-noselect href nil 'rawfile)
+			(setq ereader--current-source-file href)
       (setq html (libxml-parse-xml-region (point-min) (point-max)))
       (kill-buffer))
 
@@ -247,7 +259,8 @@ See `ereader-annotation-files', `ereader-hide-annotation',
                  (cons (file-name-nondirectory filename)
                        (set-marker (make-marker) (point))))
     (let ((ereader-html-current-file (file-name-nondirectory filename))
-          (shr-external-rendering-functions '((a . ereader-html-tag-a))))
+          (shr-external-rendering-functions '((a . ereader-html-tag-a)
+																							(img . ereader-html-tag-img))))
       (shr-insert-document html))))
 
 (defun ereader-chapter-position (c)
@@ -258,12 +271,11 @@ See `ereader-annotation-files', `ereader-hide-annotation',
           0))
     0))
 
-;; TODO position image
 (defun ereader-read-epub (epub-filename)
   (let ((extracted-dir (concat (make-temp-file
                                 (concat (file-name-base epub-filename) "-")
                                 'directory) "/"))
-        opmf-file content manifest toc-id toc-html root-dir)
+        opmf-file content manifest manifest-items spine toc-id toc-html root-dir)
     (call-process "unzip" nil nil nil "-d" extracted-dir epub-filename)
 
     (with-current-buffer
@@ -325,14 +337,24 @@ See `ereader-annotation-files', `ereader-hide-annotation',
                     (cdr (assq 'href (xml-node-attributes link)))
                     (xml+-node-text link))))
 
-    (setq manifest (assoc 'manifest (xml-node-children  content)))
+		;; The manifest section of content.opmf describes resources (chapters,
+		;; images, table of contents etc), and the spine puts them in order
+		(setq manifest-items nil)
+    (setq manifest (assoc 'manifest (xml-node-children content)))
     (dolist (item (xml-node-children manifest))
-      (let ((interpreter (cdr (assoc
-                               (cdr (assoc 'media-type (xml-node-attributes item)))
-                               ereader-media-types))))
-        (when interpreter
-          (funcall interpreter root-dir item)
-          (insert "\n"))))
+			(add-to-list 'manifest-items (cons (cdr (assoc 'id (xml-node-attributes item)))
+																				 item)))
+
+		(setq spine (assoc 'spine (xml-node-children content)))
+		(dolist (pos (xml-node-children spine))
+			(let* ((id (cdr (assoc 'idref (xml-node-attributes pos))))
+						 (item (cdr (assoc id manifest-items))))
+				(let ((interpreter (cdr (assoc
+																 (cdr (assoc 'media-type (xml-node-attributes item)))
+																 ereader-media-types))))
+					(when interpreter
+						(funcall interpreter root-dir item)
+						(insert "\n")))))
 
     ;; We've found out where the chapters are; now put them in order
     (sort
