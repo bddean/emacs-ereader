@@ -365,7 +365,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 (defun ereader-current-chapter ()
   (cdr (let ((possibilities ereader-chapters))
          (when possibilities
-           (while (and possibilities (car possibilities) (second possibilities)
+           (while (and possibilities (car possibilities) (cl-second possibilities)
                        (or (< (point) (ereader-chapter-position
                                        (car possibilities)))
                            (> (point) (ereader-chapter-position
