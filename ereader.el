@@ -204,7 +204,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
                                'face 'ereader-link
                                ))))
 
-(defun ereader--current-source-file nil
+(defvar ereader--current-source-file nil
 	"Location of html file currently being parsed, used for
 	relative links")
 
