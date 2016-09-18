@@ -108,7 +108,7 @@ Example: [[ebook.epub::@Ch 1::$It was a dark and stormy night]]"
 
       (org-store-link-props
        :type "ebook"
-       :link 'link
+       :link link
        :description
        (if chapter
            (format "`%s...' (%s, %s)"
