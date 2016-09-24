@@ -32,6 +32,14 @@
 (require 'view)
 (require 'xml+)
 
+(condition-case nil
+		(require 'dom)
+	(file-error
+	 (defmacro dom-attr (node attr)
+		 "Get html attribute for shr version 24."
+		 `(cdr (assq (intern (concat ":" (symbol-name ,attr)))
+								 ,node)))))
+
 (defvar ereader-media-types
   '(("image/jpeg" . ereader-display-image)
     ("application/xhtml+xml" . ereader-display-html)))
@@ -191,7 +199,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 
 
 (defun ereader-html-tag-a (cont)
-  (let ((url (cdr (assq :href cont)))
+  (let ((url (dom-attr cont 'href))
         (start (point)))
     (shr-generic cont)
     ;; TODO for non-local urls fall back on shr function
@@ -210,7 +218,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 
 ;; TODO Support SVGs that contain relative links
 (defun ereader-html-tag-img (cont)
-	(let ((url (cdr (assq :src cont)))
+	(let ((url (dom-attr cont 'src))
 				(basedir (file-name-directory ereader--current-source-file)))
 		(insert-image
 		 (create-image (expand-file-name url basedir)))))
@@ -227,13 +235,17 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 (defvar-local ereader-chapters nil
   "Store chapters for an ereader buffer in the form (linkname, chapter)")
 
+;; TODO fix for v25
 (defadvice shr-descend (before ereader-anchor-storage activate)
   "Store link targets for `ereader-mode'."
   (when (equal major-mode 'ereader-mode)
-    (let ((id (assq :id (cdr dom))))
+    (let ((id (cdr
+							 (or (assq :id (cdr dom))			 ;; Emacs 24
+									 (assq 'id (cadr dom))		 ;; Emacs 25
+									 ))))
       (when id
         (add-to-list 'ereader-links
-                     (cons (format "%s#%s" ereader-html-current-file (cdr id))
+                     (cons (format "%s#%s" ereader-html-current-file id)
                            (set-marker (make-marker) (point))))))))
 
 (defun ereader-follow-link ()
