@@ -29,8 +29,9 @@
 (require 's)
 (require 'ereader)
 
-(org-add-link-type "ebook" #'org-ebook-open)
-(add-hook 'org-store-link-functions #'org-ebook-store-link)
+(org-link-set-parameters "ebook"
+                         :follow #'org-ebook-open
+                         :store #'org-ebook-store-link)
 
 (defun org-ebook-parse-path (path)
   (let* ((components (s-split "::" path))
