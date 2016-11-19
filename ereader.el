@@ -35,10 +35,10 @@
 (condition-case nil
 		(require 'dom)
 	(file-error
-	 (defmacro dom-attr (node attr)
+	 (defun dom-attr (node attr)
 		 "Get html attribute for shr version 24."
-		 `(cdr (assq (intern (concat ":" (symbol-name ,attr)))
-								 ,node)))))
+     (cdr (assq (intern (concat ":" (symbol-name attr)))
+                node)))))
 
 (defvar ereader-media-types
   '(("image/jpeg" . ereader-display-image)
@@ -235,13 +235,12 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 (defvar-local ereader-chapters nil
   "Store chapters for an ereader buffer in the form (linkname, chapter)")
 
-;; TODO fix for v25
 (defadvice shr-descend (before ereader-anchor-storage activate)
   "Store link targets for `ereader-mode'."
-  (when (equal major-mode 'ereader-mode)
+  (when (and (listp dom) (equal major-mode 'ereader-mode))
     (let ((id (cdr
 							 (or (assq :id (cdr dom))			 ;; Emacs 24
-									 (assq 'id (cadr dom))		 ;; Emacs 25
+									 (assq 'id (cdr dom))		 ;; Emacs 25
 									 ))))
       (when id
         (add-to-list 'ereader-links
