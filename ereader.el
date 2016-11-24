@@ -64,7 +64,11 @@
   "Notes files for ebooks.
 Alist mapping ebook titles (values of the variable
 `ereader-meta-title' in ebook buffers) to Org notes containing
-annotations."
+annotations.
+
+Text in an org file after a link appear as annotations to the
+linked position.
+"
 	:group 'ereader)
 
 (defvar-local ereader-annotations '() "List of positions of annotations")
