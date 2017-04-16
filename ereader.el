@@ -29,6 +29,7 @@
 (require 'picture)
 (require 's)
 (require 'shr)
+(require 'url-util)
 (require 'view)
 (require 'xml+)
 
@@ -251,10 +252,11 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 	"Follow an link, for example from the Table of Contents."
   (interactive)
   (push-mark)
-  (let ((target (get-text-property (point) 'ereader-target)))
-    (goto-char (marker-position
-                (cdr (assoc target ereader-links))))
-    (recenter-top-bottom 4)))
+  (let ((target (url-unhex-string (get-text-property (point) 'ereader-target))))
+    (if (string-prefix-p "http" target)
+        (browse-url  target)
+      (goto-char (marker-position (cdr (assoc (car (split-string target "#")) ereader-links))))
+      (recenter-top-bottom 4))))
 
 (defun ereader-display-html (cwd item)
   (let* ((filename (cdr (assoc 'href (xml-node-attributes item))))
