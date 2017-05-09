@@ -371,7 +371,11 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 																 (cdr (assoc 'media-type (xml-node-attributes item)))
 																 ereader-media-types))))
 					(when interpreter
-						(funcall interpreter root-dir item)
+            (condition-case err
+                (funcall interpreter root-dir item)
+              (error
+               (insert (format "error: %S\n" err))
+               (insert (format "from literal contents: %S" item))))
 						(insert "\n")))))
 
     ;; We've found out where the chapters are; now put them in order
