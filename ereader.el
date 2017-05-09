@@ -304,7 +304,8 @@ See `ereader-annotation-files', `ereader-hide-annotation',
                            (xml-node-attributes
                             (xml+-query-first (libxml-parse-xml-region (point-min) (point-max))
                                               '((container) > (rootfiles) > (rootfile)))))))
-            root-dir (file-name-directory opmf-file)))
+            root-dir (file-name-directory opmf-file))
+      (kill-buffer))
 
     (with-current-buffer (find-file-noselect opmf-file nil 'rawfile)
       (setq content (libxml-parse-xml-region (point-min) (point-max)))
