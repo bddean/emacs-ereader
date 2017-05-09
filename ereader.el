@@ -223,7 +223,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 
 ;; TODO Support SVGs that contain relative links
 (defun ereader-html-tag-img (cont)
-	(let ((url (dom-attr cont 'src))
+  (let ((url (dom-attr cont 'src))
 				(basedir (file-name-directory ereader--current-source-file)))
 		(insert-image
 		 (create-image (expand-file-name url basedir)))))
