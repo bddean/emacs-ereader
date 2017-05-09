@@ -428,6 +428,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 \\{ereader-mode-map}"
   (auto-save-mode 0)
   (setq truncate-lines 1)
+  (buffer-disable-undo)
   (make-local-variable 'ereader-links)
 	(make-local-variable 'revert-buffer-function) ;; TODO
   (make-local-variable 'require-final-newline)
