@@ -60,6 +60,8 @@
 (defvar-local ereader-meta-isbn nil "isbn of book")
 (defvar-local ereader-meta-publisher nil "publisher of book")
 
+(defvar-local ereader-base nil "Base url for document")
+
 
 (defcustom ereader-annotation-files nil
   "Notes files for ebooks.
@@ -212,18 +214,22 @@ See `ereader-annotation-files', `ereader-hide-annotation',
         (start (point)))
     (shr-generic cont)
     ;; TODO for non-local urls fall back on shr function
+
+    ;; Url points relative to current directory
+    (setq url (file-relative-name
+               (concat (file-name-directory ereader--current-source-file) url)
+               ereader-base))
+
     (add-text-properties start (point)
                          (list 'ereader-target url
                                ;; 'help-echo TITLE ;; TODO Get from TOC or something
-                               'follow-link t ;; TODO What does this do?
+                               'follow-link t
                                'mouse-face 'highlight
                                'keymap ereader-link-map
                                'face 'ereader-link
                                ))))
 
-(defvar ereader--current-source-file nil
-	"Location of html file currently being parsed, used for
-	relative links")
+(defvar ereader--current-source-file nil "Internal: Path to HTML currently being parsed.")
 
 ;; TODO Support SVGs that contain relative links
 (defun ereader-html-tag-img (cont)
@@ -263,8 +269,12 @@ See `ereader-annotation-files', `ereader-hide-annotation',
   (let ((target (url-unhex-string (get-text-property (point) 'ereader-target))))
     (if (string-prefix-p "http" target)
         (browse-url  target)
-      (goto-char (marker-position (cdr (assoc (car (split-string target "#")) ereader-links))))
-      (recenter-top-bottom 4))))
+      (let ((target-mark (cdr (assoc (car (split-string target "#")) ereader-links))))
+        (if target-mark
+            (progn
+              (goto-char (marker-position target-mark))
+              (recenter-top-bottom 4))
+          (message "Link target not found"))))))
 
 (defun ereader-display-html (cwd item)
   (let* ((filename (cdr (assoc 'href (xml-node-attributes item))))
@@ -277,9 +287,8 @@ See `ereader-annotation-files', `ereader-hide-annotation',
       (kill-buffer))
 
     (add-to-list 'ereader-links
-                 (cons (file-name-nondirectory filename)
-                       (set-marker (make-marker) (point))))
-    (let ((ereader-html-current-file (file-name-nondirectory filename))
+                 (cons filename (set-marker (make-marker) (point))))
+    (let ((ereader-html-current-file filename)
           (shr-external-rendering-functions '((a . ereader-html-tag-a)
                                               (img . ereader-html-tag-img)
                                               (title . ereader-html-tag-title))))
@@ -369,6 +378,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 																				 item)))
 
 		(setq spine (assoc 'spine (xml-node-children content)))
+    (setq ereader-base extracted-dir)
 		(dolist (pos (xml-node-children spine))
 			(let* ((id (cdr (assoc 'idref (xml-node-attributes pos))))
 						 (item (cdr (assoc id manifest-items))))
