@@ -123,8 +123,8 @@ See `ereader-annotation-files', `ereader-hide-annotation',
                                                                 (file-name-nondirectory
                                                                  (buffer-file-name))
                                                                 (org-current-line))))
-                
-                
+
+
                 (when (equal ebook-file
                              (expand-file-name (plist-get path-parts :filename)))
                   (save-window-excursion
@@ -135,7 +135,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
                         (setq begin (point) end (match-end 0))
                       (setq begin (line-beginning-position)
                             end (line-end-position)))
-                    
+
                     (add-text-properties begin end (list 'face 'underline
                                                          'ereader-annotation annotation)))))
               (cl-flet ((message (&rest args) nil)) (org-next-link))))))))
@@ -202,6 +202,10 @@ See `ereader-annotation-files', `ereader-hide-annotation',
     (define-key map [mouse-2] 'ereader-follow-link)
     map))
 
+
+(defun ereader-html-tag-title (cont)
+  ;; Don't display these
+  )
 
 (defun ereader-html-tag-a (cont)
   (let ((url (dom-attr cont 'href))
@@ -277,7 +281,8 @@ See `ereader-annotation-files', `ereader-hide-annotation',
                        (set-marker (make-marker) (point))))
     (let ((ereader-html-current-file (file-name-nondirectory filename))
           (shr-external-rendering-functions '((a . ereader-html-tag-a)
-																							(img . ereader-html-tag-img))))
+                                              (img . ereader-html-tag-img)
+                                              (title . ereader-html-tag-title))))
       (shr-insert-document html))))
 
 (defun ereader-chapter-position (c)
