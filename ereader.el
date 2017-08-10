@@ -213,7 +213,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
   (let ((url (dom-attr cont 'href))
         (start (point)))
     (shr-generic cont)
-    ;; TODO for non-local urls fall back on shr function
+    ;; TODO for non-local urls fall back on original shr function
 
     ;; Url points relative to current directory
     (setq url (file-relative-name
@@ -307,6 +307,8 @@ See `ereader-annotation-files', `ereader-hide-annotation',
                                 (concat (file-name-base epub-filename) "-")
                                 'directory) "/"))
         opmf-file content manifest manifest-items spine toc-id toc-html root-dir)
+    (setq ereader-base extracted-dir)
+
     (call-process "unzip" nil nil nil "-d" extracted-dir epub-filename)
 
     (with-current-buffer
@@ -378,8 +380,7 @@ See `ereader-annotation-files', `ereader-hide-annotation',
 																				 item)))
 
 		(setq spine (assoc 'spine (xml-node-children content)))
-    (setq ereader-base extracted-dir)
-		(dolist (pos (xml-node-children spine))
+    (dolist (pos (xml-node-children spine))
 			(let* ((id (cdr (assoc 'idref (xml-node-attributes pos))))
 						 (item (cdr (assoc id manifest-items))))
 				(let ((interpreter (cdr (assoc
